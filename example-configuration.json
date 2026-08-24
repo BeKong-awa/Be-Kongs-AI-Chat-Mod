@@ -1,5 +1,5 @@
 {
-  //使用时需要删除所有注释！！！
+  //使用时需要删除所有注释！！！ 
   // 模组总开关，true 启用
   "enabled": true,
   // AI 提供商：openai / deepseek / moonshot / anthropic / ollama / agnes / custom
