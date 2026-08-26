@@ -1,0 +1,11 @@
+// Init script to force Gradle to invalidate stale source caches
+allprojects {
+    afterEvaluate {
+        tasks.matching { it.name == 'compileClientJava' }.configureEach { task ->
+            if (task instanceof org.gradle.api.tasks.compile.JavaCompile) {
+                task.exclude '**/[Double*.java'
+                task.exclude '**/[DoubleEdit*.java'
+            }
+        }
+    }
+}

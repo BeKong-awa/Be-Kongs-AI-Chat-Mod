@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 1,
 	"id": "be-kongs-ai-chat-mod",
-	"version": "1.1.7",
+	"version": "${version}",
 	"name": "Be Kong's AI Chat Mod",
 	"description": "在聊天框接入 AI，支持自定义模型、正则触发、定时冷却、消息过滤以及文生图。",
 	"authors": ["BeKong"],
@@ -11,7 +11,7 @@
 		"client": ["com.be_kongs_ai_chat_mod.BeKongsAiChatMod"]
 	},
 	"depends": {
-		"fabricloader": ">=0.16.9",
+		"fabricloader": ">=0.19.3",
 		"fabric-api": "*",
 		"minecraft": "~26.1.2",
 		"java": ">=25"

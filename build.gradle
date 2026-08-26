@@ -3,17 +3,10 @@ plugins {
 	id 'maven-publish'
 }
 
-repositories {
-	// Add repositories to retrieve artifacts from in here.
-	// You should only use this when depending on other mods because
-	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
-	// for more information about repositories.
-}
+apply from: 'extract_input.gradle'
 
 loom {
 	splitEnvironmentSourceSets()
-
 	mods {
 		"be-kongs-ai-chat-mod" {
 			sourceSet sourceSets.main
@@ -23,20 +16,25 @@ loom {
 }
 
 dependencies {
-	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-
-	// Fabric API. This is technically optional, but you probably want it anyway.
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
 
 processResources {
 	def version = project.version
 	inputs.property "version", version
-
 	filesMatching("fabric.mod.json") {
 		expand "version": version
+	}
+}
+
+// ── Exclude broken bracket-prefixed stub files from compilation ────────────
+tasks.withType(org.gradle.api.tasks.compile.JavaCompile).configureEach { task ->
+	if (task.name == 'compileClientJava' || task.name == 'compileJava') {
+		task.exclude '**/[Double*.java'
+		task.exclude '**/[DoubleEdit*.java'
+		task.exclude '**/[*].java'
 	}
 }
 
@@ -45,11 +43,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 java {
-	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-	// if it is present.
-	// If you remove this line, sources will not be generated.
 	withSourcesJar()
-
 	sourceCompatibility = JavaVersion.VERSION_25
 	targetCompatibility = JavaVersion.VERSION_25
 }
@@ -57,25 +51,58 @@ java {
 jar {
 	def projectName = project.name
 	inputs.property "projectName", projectName
-
 	from("LICENSE") {
-		rename { "${it}_$projectName"}
+		rename { "${it}_$projectName" }
 	}
 }
 
-// configure the maven publication
+// ── Inspect real 26.x API signatures via reflection (sources jar unavailable) ──
+// Usage: gradlew dumpClassApi -Pclasses=net.minecraft.client.input.KeyEvent,net.minecraft.client.gui.screens.Screen
+tasks.register('dumpClassApi') {
+	doLast {
+		def list = (project.findProperty('classes') ?: 'net.minecraft.client.input.KeyEvent').split(',')*.trim()
+		def urls = sourceSets.client.compileClasspath.files.collect { it.toURI().toURL() } as URL[]
+		def loader = new URLClassLoader(urls, (ClassLoader) null)
+		list.each { cn ->
+			try {
+				def c = loader.loadClass(cn)
+				println "== $cn =="
+				try {
+					c.declaredConstructors.each { ct ->
+						println "  C: ${java.lang.reflect.Modifier.toString(ct.modifiers)} ${c.simpleName}(${ct.parameterTypes.collect { it.simpleName }.join(', ')})"
+					}
+				} catch (Throwable t) { println "  (constructors unavailable: $t)" }
+				try {
+					def methods = c.declaredMethods
+					if (methods != null) {
+						methods.sort { it.name }.each { m ->
+							println "  M: ${java.lang.reflect.Modifier.toString(m.modifiers)} ${m.returnType.simpleName} ${m.name}(${m.parameterTypes.collect { it.simpleName }.join(', ')})"
+						}
+					} else { println "  (declaredMethods returned null)" }
+				} catch (Throwable t) { println "  (methods unavailable: $t)" }
+				try {
+					c.declaredFields.each { f ->
+						println "  F: ${java.lang.reflect.Modifier.toString(f.modifiers)} ${f.type.simpleName} ${f.name}"
+					}
+				} catch (Throwable t) { println "  (fields unavailable: $t)" }
+				c.declaredClasses.each { inner ->
+					println "  INNER: ${inner.simpleName}"
+					if (inner.isEnum()) {
+						inner.enumConstants.each { println "    CONST: $it" }
+					}
+				}
+			} catch (Throwable t) {
+				println "ERR $cn: $t"
+			}
+		}
+	}
+}
+
 publishing {
 	publications {
 		create("mavenJava", MavenPublication) {
 			from components.java
 		}
 	}
-
-	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
-	repositories {
-		// Add repositories to publish to here.
-		// Notice: This block does NOT have the same function as the block in the top level.
-		// The repositories here will be used for publishing your artifact, not for
-		// retrieving dependencies.
-	}
+	repositories { }
 }

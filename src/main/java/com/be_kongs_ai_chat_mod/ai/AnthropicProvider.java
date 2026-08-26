@@ -58,8 +58,33 @@ public class AnthropicProvider implements AiProvider {
         JsonArray messageArray = new JsonArray();
         for (ChatMessage msg : messages) {
             JsonObject msgObj = new JsonObject();
-            msgObj.addProperty("role", "assistant".equals(msg.role) ? "assistant" : "user");
-            msgObj.addProperty("content", msg.content);
+            msgObj.addProperty("role", "assistant".equals(msg.getRole()) ? "assistant" : "user");
+            Object content = msg.getContent();
+            if (content instanceof String) {
+                msgObj.addProperty("content", (String) content);
+            } else if (content instanceof JsonArray) {
+                // Anthropic 格式：content 是数组，每个元素有 type 和 text/image_url
+                JsonArray anthropicContent = new JsonArray();
+                for (var element : (JsonArray) content) {
+                    JsonObject obj = element.getAsJsonObject();
+                    String type = obj.get("type").getAsString();
+                    if ("text".equals(type)) {
+                        JsonObject textPart = new JsonObject();
+                        textPart.addProperty("type", "text");
+                        textPart.addProperty("text", obj.get("text").getAsString());
+                        anthropicContent.add(textPart);
+                    } else if ("image_url".equals(type)) {
+                        JsonObject imagePart = new JsonObject();
+                        imagePart.addProperty("type", "image");
+                        JsonObject source = new JsonObject();
+                        source.addProperty("type", "url");
+                        source.addProperty("url", obj.getAsJsonObject("image_url").get("url").getAsString());
+                        imagePart.add("source", source);
+                        anthropicContent.add(imagePart);
+                    }
+                }
+                msgObj.add("content", anthropicContent);
+            }
             messageArray.add(msgObj);
         }
         body.add("messages", messageArray);

@@ -1,0 +1,12 @@
+// Force clean client source set of bracket-named files
+sourceSets {
+	client {
+		java.srcDirs = {
+			it.findAll { dir -> !dir.name.startsWith('[') }
+		}
+	}
+}
+
+// Also explicitly remove any [Double* files from the compile source set
+def clientSrc = project.sourceSets.client.allSource
+clientSrc.filter { file -> !file.name.contains('[') }

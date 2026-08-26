@@ -35,12 +35,28 @@ public class AiChatClientCommands {
                                         + ", triggerCooldown=" + c.triggerCooldownSeconds + "s"
                                         + ", schedule=" + c.scheduleEnabled + "(" + c.scheduleIntervalSeconds + "s)"
                                         + ", restriction=" + c.restrictionEnabled
-                                        + ", context=" + c.contextEnabled + "(" + c.contextLength + ")");
+                                        + ", context=" + c.contextEnabled + "(" + c.contextLength + ")"
+                                        + ", whitelist=" + c.whitelistMode
+                                        + ", imageExtract=" + c.imageExtractEnabled
+                                );
                                 return 1;
                             }))
                             .then(ClientCommands.literal("clearcontext").executes(ctx -> {
                                 AiChatManager.getInstance().clearContext();
                                 feedback("AI Chat Mod context cleared.");
+                                return 1;
+                            }))
+                            .then(ClientCommands.literal("openconfig").executes(ctx -> {
+                                Minecraft client = Minecraft.getInstance();
+                                if (client.player != null) {
+                                    // 聊天界面提交命令后会关闭自己（把当前界面置空），
+                                    // 这里同步 setScreen 会被立即覆盖，导致界面一闪而过。
+                                    // 延迟到下一个客户端任务再打开配置界面。
+                                    client.execute(() -> client.setScreen(
+                                            new com.be_kongs_ai_chat_mod.ui.ConfigScreen(
+                                                    client.screen, BeKongsAiChatMod.config)));
+                                    feedback("AI Chat Mod config UI opened.");
+                                }
                                 return 1;
                             }))
             );
@@ -50,7 +66,6 @@ public class AiChatClientCommands {
     private static void feedback(String msg) {
         Minecraft client = Minecraft.getInstance();
         if (client != null && client.player != null) {
-            // 使用 sendSystemMessage 替代 addMessage（在 26.1.2 中 addMessage 需要 4 个参数）
             client.player.sendSystemMessage(Component.literal("§a[AiChatMod] §f" + msg));
         }
     }

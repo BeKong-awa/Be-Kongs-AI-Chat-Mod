@@ -60,8 +60,13 @@ public class OpenAiCompatibleProvider implements AiProvider {
         }
         for (ChatMessage msg : messages) {
             JsonObject msgObj = new JsonObject();
-            msgObj.addProperty("role", msg.role);
-            msgObj.addProperty("content", msg.content);
+            msgObj.addProperty("role", msg.getRole());
+            Object content = msg.getContent();
+            if (content instanceof String) {
+                msgObj.addProperty("content", (String) content);
+            } else if (content instanceof JsonArray) {
+                msgObj.add("content", (JsonArray) content);
+            }
             messageArray.add(msgObj);
         }
         body.add("messages", messageArray);

@@ -1,0 +1,8 @@
+// Remove bracket-prefixed files from client source set
+def uiDir = new File("${project.rootDir}/src/client/java/com/be_kongs_ai_chat_mod/ui")
+uiDir.eachFile { f ->
+    if (f.name.startsWith('[')) {
+        println "Removing: ${f.name}"
+        f.delete()
+    }
+}
